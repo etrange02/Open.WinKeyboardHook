@@ -54,7 +54,7 @@ namespace Open.WinKeyboardHook
 
         public void StopCapturing()
         {
-            if (_previousKeyboardHandler != null) _previousKeyboardHandler.Close();
+            _previousKeyboardHandler?.Close();
         }
 
         private void HookKeyboard()
@@ -93,8 +93,6 @@ namespace Open.WinKeyboardHook
                     switch (intParam)
                     {
                         case NativeMethods.WM_SYSKEYDOWN:
-                            RaiseKeyDownEvent(keyEventArgs);
-                            break;
                         case NativeMethods.WM_KEYDOWN:
                             RaiseKeyDownEvent(keyEventArgs);
 
@@ -116,7 +114,7 @@ namespace Open.WinKeyboardHook
                             RaiseKeyUpEvent(keyEventArgs);
                             break;
                     }
-                    if(keyEventArgs.SuppressKeyPress) return new IntPtr(1);
+                    if (keyEventArgs.SuppressKeyPress) return new IntPtr(1);
                 }
             }
             finally
@@ -130,11 +128,10 @@ namespace Open.WinKeyboardHook
 
         private static Keys BuildKeyData(Keys virtualKeyCode)
         {
-            var isDownControl = IsKeyPressed(NativeMethods.VK_LCONTROL) || IsKeyPressed(NativeMethods.VK_RCONTROL);
-            var isDownShift = IsKeyPressed(NativeMethods.VK_LSHIFT) || IsKeyPressed(NativeMethods.VK_RSHIFT);
-            var isDownAlt = IsKeyPressed(NativeMethods.VK_LALT) || IsKeyPressed(NativeMethods.VK_RALT) ||
-                             IsKeyPressed(NativeMethods.VK_RMENU);
-            var isAltGr = IsKeyPressed(NativeMethods.VK_RMENU) && IsKeyPressed(NativeMethods.VK_LCONTROL);
+            var isDownControl = IsControlKeyDown();
+            var isDownShift = IsShiftKeyDown();
+            var isDownAlt = IsAltKeyDown();
+            var isAltGr = IsAltGrKeyDown();
 
             return virtualKeyCode |
                    (isDownControl ? Keys.Control : Keys.None) |
@@ -148,31 +145,38 @@ namespace Open.WinKeyboardHook
             return (NativeMethods.GetKeyState(virtualKeyCode) & 0x80) != 0;
         }
 
+        private static bool IsControlKeyDown()
+        {
+            return IsKeyPressed(NativeMethods.VK_LCONTROL) || IsKeyPressed(NativeMethods.VK_RCONTROL);
+        }
+        private static bool IsShiftKeyDown()
+        {
+            return IsKeyPressed(NativeMethods.VK_LSHIFT) || IsKeyPressed(NativeMethods.VK_RSHIFT);
+        }
+
+        private static bool IsAltKeyDown()
+        {
+            return IsKeyPressed(NativeMethods.VK_LALT) || IsKeyPressed(NativeMethods.VK_RALT);
+        }
+
+        private static bool IsAltGrKeyDown()
+        {
+            return IsKeyPressed(NativeMethods.VK_RMENU) || IsControlKeyDown() && IsAltKeyDown();
+        }
+
         private void RaiseKeyPressEvent(char key)
         {
-            var keyPress = KeyPress;
-            if (keyPress != null)
-            {
-                keyPress(this, new KeyPressEventArgs(key));
-            }
+            KeyPress?.Invoke(this, new KeyPressEventArgs(key));
         }
 
         private void RaiseKeyDownEvent(KeyEventArgs args)
         {
-            var keyDown = KeyDown;
-            if (keyDown != null)
-            {
-                keyDown(this, args);
-            }
+            KeyDown?.Invoke(this, args);
         }
 
         private void RaiseKeyUpEvent(KeyEventArgs args)
         {
-            var keyUp = KeyUp;
-            if (keyUp != null)
-            {
-                keyUp(this, args);
-            }
+            KeyUp?.Invoke(this, args);
         }
 
         private static string ToUnicode(KBDLLHOOKSTRUCT info)
@@ -183,10 +187,9 @@ namespace Open.WinKeyboardHook
             var buffer = new StringBuilder(128);
 
             var success = NativeMethods.GetKeyboardState(keyState);
-            if(!success) return string.Empty;
+            if (!success) return string.Empty;
 
-            var isAltGr = IsKeyPressed(NativeMethods.VK_RMENU) && IsKeyPressed(NativeMethods.VK_LCONTROL);
-            if (isAltGr) keyState[NativeMethods.VK_LCONTROL] = keyState[NativeMethods.VK_LALT] = 0x80;
+            if (IsAltGrKeyDown()) keyState[NativeMethods.VK_LCONTROL] = keyState[NativeMethods.VK_LALT] = 0x80;
 
             var layout = GetForegroundKeyboardLayout();
             var count = ToUnicode((Keys) info.KeyCode, info.ScanCode, keyState, buffer, layout);

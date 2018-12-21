@@ -94,11 +94,10 @@ namespace Open.WinKeyboardHook
         internal static extern uint MapVirtualKey(uint uCode, uint uMapType);
 
         [DllImport("user32.dll")]
-        internal static extern int ToUnicodeEx(uint wVirtKey, uint wScanCode, byte[]
-                                                                                  lpKeyState,
+        internal static extern int ToUnicodeEx(uint wVirtKey, uint wScanCode, byte[] lpKeyState,
                                                [Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder pwszBuff,
                                                int cchBuff, uint wFlags, IntPtr dwhkl);
-
+        
         [DllImport("user32.dll")]
         internal static extern IntPtr GetForegroundWindow();
 

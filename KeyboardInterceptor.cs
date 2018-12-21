@@ -66,8 +66,7 @@ namespace Open.WinKeyboardHook
                 {
                     var moduleHandler = NativeMethods.GetModuleHandle(module.ModuleName);
 
-                    _previousKeyboardHandler = NativeMethods.SetWindowsHookEx(
-                        NativeMethods.WH_KEYBOARD_LL, _keyboardProc, moduleHandler, 0);
+                    _previousKeyboardHandler = NativeMethods.SetWindowsHookEx(NativeMethods.WH_KEYBOARD_LL, _keyboardProc, moduleHandler, 0);
 
                     if (_previousKeyboardHandler.IsInvalid)
                     {
@@ -149,6 +148,7 @@ namespace Open.WinKeyboardHook
         {
             return IsKeyPressed(NativeMethods.VK_LCONTROL) || IsKeyPressed(NativeMethods.VK_RCONTROL);
         }
+
         private static bool IsShiftKeyDown()
         {
             return IsKeyPressed(NativeMethods.VK_LSHIFT) || IsKeyPressed(NativeMethods.VK_RSHIFT);
@@ -197,17 +197,16 @@ namespace Open.WinKeyboardHook
             if (count > 0)
             {
                 result = buffer.ToString(0, count);
+                
+                if (_lastDeadKey == null) return result;
 
-                if (_lastDeadKey != null)
-                {
-                    ToUnicode(_lastDeadKey.KeyCode,
-                              _lastDeadKey.ScanCode,
-                              _lastDeadKey.KeyboardState,
-                              buffer,
-                              layout);
+                // Reload diacritic character or accent
+                ToUnicode(_lastDeadKey.KeyCode, _lastDeadKey.ScanCode, _lastDeadKey.KeyboardState, buffer, layout);
+                count = ToUnicode((Keys)info.KeyCode, info.ScanCode, keyState, buffer, layout);
 
-                    _lastDeadKey = null;
-                }
+                result = buffer.ToString(0, count);
+
+                _lastDeadKey = null;
             }
             else if (count < 0)
             {
@@ -257,8 +256,8 @@ namespace Open.WinKeyboardHook
         private sealed class DeadKeyInfo
         {
             public readonly Keys KeyCode;
-            public readonly Byte[] KeyboardState;
-            public readonly UInt32 ScanCode;
+            public readonly byte[] KeyboardState;
+            public readonly uint ScanCode;
 
             public DeadKeyInfo(KBDLLHOOKSTRUCT info, byte[] keyState)
             {

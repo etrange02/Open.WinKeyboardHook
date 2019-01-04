@@ -66,7 +66,7 @@ namespace Open.WinKeyboardHook
                 {
                     var moduleHandler = NativeMethods.GetModuleHandle(module.ModuleName);
 
-                    _previousKeyboardHandler = NativeMethods.SetWindowsHookEx(NativeMethods.WH_KEYBOARD_LL, _keyboardProc, moduleHandler, 0);
+                    _previousKeyboardHandler = NativeMethods.SetWindowsHookEx(NativeMethods.WH_KEYBOARD, _keyboardProc, moduleHandler, 0);
 
                     if (_previousKeyboardHandler.IsInvalid)
                     {
@@ -95,7 +95,10 @@ namespace Open.WinKeyboardHook
                         case NativeMethods.WM_KEYDOWN:
                             RaiseKeyDownEvent(keyEventArgs);
 
-                            var buffer = ToUnicode(kbdStruct);
+                            var keyState = new byte[256];
+                            if (!NativeMethods.GetKeyboardState(keyState)) break;
+
+                            var buffer = ToUnicode(kbdStruct, keyState);
                             if (!string.IsNullOrEmpty(buffer))
                             {
                                 foreach (var rawKey in buffer)
@@ -179,25 +182,36 @@ namespace Open.WinKeyboardHook
             KeyUp?.Invoke(this, args);
         }
 
-        private static string ToUnicode(KBDLLHOOKSTRUCT info)
+        private static string ToUnicode(KBDLLHOOKSTRUCT info, byte[] keyState)
         {
             string result = null;
 
-            var keyState = new byte[256];
-            var buffer = new StringBuilder(128);
-
-            var success = NativeMethods.GetKeyboardState(keyState);
-            if (!success) return string.Empty;
-
             if (IsAltGrKeyDown()) keyState[NativeMethods.VK_LCONTROL] = keyState[NativeMethods.VK_LALT] = 0x80;
 
+            var buffer = new StringBuilder(128);
             var layout = GetForegroundKeyboardLayout();
-            var count = ToUnicode((Keys) info.KeyCode, info.ScanCode, keyState, buffer, layout);
+            var count = ToUnicode((Keys) info.KeyCode, info.KeyCode, keyState, buffer, layout);
 
             if (count > 0)
             {
                 result = buffer.ToString(0, count);
-                
+
+                var isShiftDown = IsShiftKeyDown();
+                var capsLock = IsKeyPressed(NativeMethods.VK_CAPITAL);
+                var isShift = IsKeyPressed(NativeMethods.VK_SHIFT);
+                var state = (keyState[NativeMethods.VK_LSHIFT] >= 0x80);
+                if (result == "B")
+                {
+
+                }
+                else if (result == "b")
+                { }
+                else if (result == "8")
+                { }
+
+                if (isShiftDown != state)
+                { }
+
                 if (_lastDeadKey == null) return result;
 
                 // Reload diacritic character or accent

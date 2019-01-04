@@ -48,6 +48,7 @@ namespace Open.WinKeyboardHook
     internal static class NativeMethods
     {
         internal const int WH_KEYBOARD_LL = 0x0D;
+        internal const int WH_KEYBOARD = 0x02;
 
         internal const byte VK_CAPITAL = 0x14;
         internal const byte VK_CONTROL = 0x11;
